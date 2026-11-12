@@ -1,0 +1,649 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1120">
+
+    <title>SSL/TLS Analyzer | VulnScope</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #0b1120;
+            color: #e5e7eb;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 35px 25px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 35px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 25px;
+            font-weight: bold;
+            color: #22d3ee;
+        }
+
+        .navigation {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .back-link,
+        .logout-button {
+            color: #22d3ee;
+            text-decoration: none;
+            border: 1px solid #164e63;
+            padding: 10px 16px;
+            border-radius: 7px;
+            background: transparent;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .back-link:hover {
+            background: #164e63;
+        }
+
+        .logout-button {
+            color: #e5e7eb;
+            border-color: #374151;
+        }
+
+        .logout-button:hover {
+            background: #374151;
+        }
+
+        button:focus-visible,
+        a:focus-visible,
+        input:focus-visible {
+            outline: 2px solid #22d3ee;
+            outline-offset: 3px;
+        }
+
+        .page-heading {
+            margin-bottom: 25px;
+        }
+
+        .page-heading h1 {
+            font-size: 30px;
+            margin-bottom: 10px;
+        }
+
+        .page-heading p {
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .card {
+            background: #111c30;
+            border: 1px solid #24344d;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .card h2 {
+            font-size: 19px;
+            margin-bottom: 18px;
+        }
+
+        .scan-form {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .scan-form input {
+            flex: 1;
+            min-width: 220px;
+            padding: 14px;
+            background: #0b1120;
+            border: 1px solid #334155;
+            border-radius: 7px;
+            color: white;
+            font-size: 15px;
+        }
+
+        .scan-form input:focus {
+            outline: 1px solid #22d3ee;
+            border-color: #22d3ee;
+        }
+
+        .scan-form button {
+            padding: 14px 24px;
+            background: #0891b2;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .scan-form button:hover {
+            background: #0e7490;
+        }
+
+        .scan-form button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .help-text {
+            color: #94a3b8;
+            font-size: 13px;
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+
+        .error-box {
+            background: #3b1720;
+            border: 1px solid #7f1d1d;
+            color: #fecaca;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            overflow-wrap: anywhere;
+        }
+
+        .success-box {
+            background: #102d2a;
+            border: 1px solid #166534;
+            color: #bbf7d0;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            overflow-wrap: anywhere;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(200px, 1fr)
+            );
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+
+        .result-card {
+            background: #111c30;
+            border: 1px solid #24344d;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .result-card p {
+            color: #94a3b8;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .result-card h3 {
+            color: #22d3ee;
+            font-size: 19px;
+            overflow-wrap: anywhere;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .details-table td {
+            padding: 14px 10px;
+            border-bottom: 1px solid #24344d;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+
+        .details-table td:first-child {
+            color: #94a3b8;
+            width: 35%;
+        }
+
+        .details-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-valid {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .status-expired {
+            color: #f87171;
+            font-weight: bold;
+        }
+
+        .status-unknown {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
+        .footer {
+            text-align: center;
+            color: #64748b;
+            margin-top: 35px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 22px 15px;
+            }
+
+            .page-heading h1 {
+                font-size: 24px;
+            }
+
+            .navigation {
+                width: 100%;
+            }
+
+            .navigation a,
+            .navigation button {
+                flex: 1;
+                text-align: center;
+            }
+
+            .scan-form {
+                flex-direction: column;
+            }
+
+            .scan-form input,
+            .scan-form button {
+                width: 100%;
+            }
+
+            .details-table td {
+                display: block;
+                width: 100%;
+                padding: 8px 5px;
+            }
+
+            .details-table td:first-child {
+                padding-top: 14px;
+                width: 100%;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <header class="topbar">
+
+        <div class="logo">VulnScope</div>
+
+        <nav class="navigation" aria-label="Main navigation">
+
+            <a href="{{ url_for('home') }}" class="back-link">
+                Back to Dashboard
+            </a>
+
+            <form method="POST" action="{{ url_for('logout') }}">
+                <button type="submit" class="logout-button">
+                    Logout
+                </button>
+            </form>
+
+        </nav>
+
+    </header>
+
+
+    <main>
+
+        <section class="page-heading">
+
+            <h1>SSL/TLS Analyzer</h1>
+
+            <p>
+                Analyze HTTPS connections, negotiated TLS versions,
+                encryption ciphers, and SSL certificate validity.
+            </p>
+
+        </section>
+
+
+        <section class="card">
+
+            <h2>Start SSL/TLS Assessment</h2>
+
+            <form
+                method="POST"
+                action="{{ url_for('ssl_scan') }}"
+                class="scan-form"
+                id="sslScanForm"
+            >
+
+                <label for="ssl_target">
+                    Target Domain or HTTPS URL
+                </label>
+
+                <input
+                    type="text"
+                    id="ssl_target"
+                    name="ssl_target"
+                    placeholder="Enter domain (example.com)"
+                    required
+                    maxlength="253"
+                    autocomplete="off"
+                    spellcheck="false"
+                    value="{{ ssl_scan_result.target if ssl_scan_result and ssl_scan_result.target else '' }}"
+                >
+
+                <button type="submit" id="scanButton">
+                    Analyze HTTPS
+                </button>
+
+            </form>
+
+            <p class="help-text">
+                Enter a domain you own or are authorized to assess.
+                Example: example.com
+
+                <br>
+
+                The analyzer connects to the target's HTTPS port.
+            </p>
+
+        </section>
+
+
+        {% if ssl_scan_result %}
+
+            {% if ssl_scan_result.success %}
+
+                {% set certificate = ssl_scan_result.get('certificate', {}) %}
+                {% set subject = certificate.get('subject', {}) %}
+                {% set issuer = certificate.get('issuer', {}) %}
+
+                <section aria-live="polite">
+
+                    <div class="success-box">
+
+                        SSL/TLS assessment completed successfully for
+
+                        <strong>
+                            {{ ssl_scan_result.target }}
+                        </strong>.
+
+                    </div>
+
+
+                    <div class="result-grid">
+
+                        <div class="result-card">
+
+                            <p>TLS Version</p>
+
+                            <h3>
+                                {{ ssl_scan_result.tls_version or "Unknown" }}
+                            </h3>
+
+                        </div>
+
+
+                        <div class="result-card">
+
+                            <p>HTTPS Port</p>
+
+                            <h3>
+                                {{ ssl_scan_result.port or "Unknown" }}
+                            </h3>
+
+                        </div>
+
+
+                        <div class="result-card">
+
+                            <p>Certificate Validity</p>
+
+                            {% if certificate.get('expired') is sameas true %}
+
+                                <h3 class="status-expired">
+                                    Expired
+                                </h3>
+
+                            {% elif certificate.get('expired') is sameas false %}
+
+                                <h3 class="status-valid">
+                                    Not Expired
+                                </h3>
+
+                            {% else %}
+
+                                <h3 class="status-unknown">
+                                    Unknown
+                                </h3>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <div class="result-card">
+
+                            <p>Days Remaining</p>
+
+                            <h3>
+                                {{ certificate.get('days_remaining', 'Unavailable') }}
+                            </h3>
+
+                        </div>
+
+                    </div>
+
+
+                    <section class="card">
+
+                        <h2>TLS Connection Details</h2>
+
+                        <table class="details-table">
+
+                            <tbody>
+
+                                <tr>
+                                    <td>Target Domain</td>
+                                    <td>{{ ssl_scan_result.target }}</td>
+                                </tr>
+
+                                <tr>
+                                    <td>Port</td>
+                                    <td>{{ ssl_scan_result.port or "Unknown" }}</td>
+                                </tr>
+
+                                <tr>
+                                    <td>Negotiated TLS Version</td>
+                                    <td>
+                                        {{ ssl_scan_result.tls_version or "Unknown" }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td>Cipher Suite</td>
+                                    <td>
+                                        {{ ssl_scan_result.cipher or "Unknown" }}
+                                    </td>
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </section>
+
+
+                    <section class="card">
+
+                        <h2>SSL Certificate Details</h2>
+
+                        <table class="details-table">
+
+                            <tbody>
+
+                                <tr>
+                                    <td>Common Name</td>
+                                    <td>
+                                        {{ subject.get('commonName', 'Not available') }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td>Certificate Issuer</td>
+                                    <td>
+                                        {{ issuer.get('commonName', 'Not available') }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td>Issuer Organization</td>
+                                    <td>
+                                        {{ issuer.get('organizationName', 'Not available') }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td>Valid From</td>
+                                    <td>
+                                        {{ certificate.get('valid_from', 'Not available') }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td>Valid Until</td>
+                                    <td>
+                                        {{ certificate.get('valid_until', 'Not available') }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td>Days Until Expiry</td>
+                                    <td>
+                                        {{ certificate.get('days_remaining', 'Not available') }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td>Certificate Status</td>
+                                    <td>
+
+                                        {% if certificate.get('expired') is sameas true %}
+
+                                            <span class="status-expired">
+                                                Expired
+                                            </span>
+
+                                        {% elif certificate.get('expired') is sameas false %}
+
+                                            <span class="status-valid">
+                                                Not Expired
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="status-unknown">
+                                                Unknown
+                                            </span>
+
+                                        {% endif %}
+
+                                    </td>
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </section>
+
+
+                    <p class="help-text">
+
+                        Note: A successful TLS handshake with certificate
+                        verification confirms the certificate chain was
+                        trusted by the configured CA bundle at scan time.
+
+                        This result does not constitute a complete TLS
+                        security audit.
+
+                    </p>
+
+                </section>
+
+            {% else %}
+
+                <section class="error-box" role="alert">
+
+                    <strong>SSL/TLS Assessment Failed</strong>
+
+                    <p>
+                        {{ ssl_scan_result.error or "An unexpected scanning error occurred." }}
+                    </p>
+
+                </section>
+
+            {% endif %}
+
+        {% endif %}
+
+    </main>
+
+
+    <footer class="footer">
+
+        VulnScope v1.0 | SSL/TLS Security Assessment Module
+
+    </footer>
+
+</div>
+
+
+<script>
+    const sslForm = document.getElementById("sslScanForm");
+    const scanButton = document.getElementById("scanButton");
+
+    sslForm.addEventListener("submit", function () {
+
+        if (!sslForm.checkValidity()) {
+            return;
+        }
+
+        scanButton.disabled = true;
+        scanButton.textContent = "Analyzing...";
+
+    });
+</script>
+
+</body>
+</html>

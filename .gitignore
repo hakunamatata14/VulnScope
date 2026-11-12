@@ -2,25 +2,24 @@
 .env
 .env.*
 
-# Python virtual environment
-.venv/
-venv/
+# Environment secrets
+.env
+.env.*
 
-# Python cache files
+!.env.example
+
+# Python
+.venv/
 __pycache__/
 *.py[cod]
 
-# Test and coverage files
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Generated PDF reports
-reports/*.pdf
-
-# SQLite database
+# Database
 database/*.db
-database/*.db-journal
+database/*.sqlite3
 
-# VS Code local settings
+# Generated reports
+reports/*
+
+# IDE
 .vscode/
+.idea/

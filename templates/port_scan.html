@@ -1,0 +1,406 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1120">
+
+    <title>VulnScope | Nmap Port Scanner</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #0b1120;
+            color: #e5e7eb;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #22d3ee;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #9ca3af;
+        }
+
+        .panel {
+            background: #111827;
+            border: 1px solid #263449;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px;
+            background: #0b1120;
+            color: white;
+            border: 1px solid #374151;
+            border-radius: 7px;
+            margin-bottom: 18px;
+            font-size: 15px;
+        }
+
+        input:focus,
+        button:focus-visible,
+        a:focus-visible {
+            outline: 2px solid #22d3ee;
+            outline-offset: 3px;
+        }
+
+        button,
+        .back-link {
+            display: inline-block;
+            padding: 12px 22px;
+            background: #0891b2;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover,
+        .back-link:hover {
+            background: #0e7490;
+        }
+
+        .logout-button {
+            background: #374151;
+        }
+
+        .logout-button:hover {
+            background: #4b5563;
+        }
+
+        .navigation {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .disclaimer {
+            color: #fbbf24;
+            font-size: 13px;
+            margin-top: 15px;
+            line-height: 1.6;
+        }
+
+        .error {
+            background: #451a1a;
+            color: #fecaca;
+            border: 1px solid #991b1b;
+            padding: 15px;
+            border-radius: 7px;
+            overflow-wrap: anywhere;
+        }
+
+        .success {
+            color: #86efac;
+            margin-bottom: 18px;
+        }
+
+        .summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: #0b1120;
+            border: 1px solid #263449;
+            border-radius: 8px;
+            padding: 18px;
+            flex: 1;
+            min-width: 180px;
+            overflow-wrap: anywhere;
+        }
+
+        .summary-card p {
+            color: #9ca3af;
+            margin: 0 0 8px;
+        }
+
+        .summary-card h2 {
+            color: #22d3ee;
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .scan-type {
+            font-size: 15px !important;
+            line-height: 1.5;
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 750px;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            padding: 13px;
+            border-bottom: 1px solid #374151;
+            text-align: left;
+        }
+
+        th {
+            color: #22d3ee;
+            white-space: nowrap;
+        }
+
+        td {
+            overflow-wrap: anywhere;
+        }
+
+        .open {
+            color: #86efac;
+            font-weight: bold;
+        }
+
+        .empty {
+            color: #9ca3af;
+            padding: 20px 0;
+        }
+
+        .footer {
+            color: #6b7280;
+            text-align: center;
+            margin-top: 35px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            .container {
+                margin: 15px auto;
+            }
+
+            .panel {
+                padding: 18px;
+            }
+
+            .summary-card {
+                min-width: 100%;
+            }
+
+            .navigation {
+                flex-direction: column;
+            }
+
+            .navigation button,
+            .navigation a {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <header class="header">
+        <h1>VulnScope</h1>
+        <p>Network Port and Service Scanner</p>
+    </header>
+
+    <main>
+
+        <section class="panel">
+
+            <h2>Nmap Port Scanner</h2>
+
+            <p>
+                Identify open TCP ports and discover running services
+                on an authorized target.
+            </p>
+
+            <form method="POST" action="{{ url_for('port_scan') }}">
+
+                <label for="port_target">
+                    Target IP Address or Hostname
+                </label>
+
+                <input
+                    type="text"
+                    id="port_target"
+                    name="port_target"
+                    placeholder="Example: 127.0.0.1"
+                    maxlength="253"
+                    autocomplete="off"
+                    spellcheck="false"
+                    required
+                    value="{{ port_scan_result.target if port_scan_result and port_scan_result.target else '' }}"
+                >
+
+                <button type="submit">
+                    Start Port Scan
+                </button>
+
+            </form>
+
+            <p class="disclaimer">
+                Only scan systems you own or have explicit permission to assess.
+            </p>
+
+        </section>
+
+        {% if port_scan_result %}
+
+            <section class="panel" aria-live="polite">
+
+                {% if port_scan_result.success %}
+
+                    <h2>Scan Results</h2>
+
+                    <p class="success">
+                        Scan completed successfully.
+                    </p>
+
+                    <div class="summary">
+
+                        <div class="summary-card">
+                            <p>Target</p>
+                            <h2>{{ port_scan_result.target }}</h2>
+                        </div>
+
+                        <div class="summary-card">
+                            <p>Open TCP Ports</p>
+                            <h2>{{ port_scan_result.total_open_ports }}</h2>
+                        </div>
+
+                        <div class="summary-card">
+                            <p>Scan Type</p>
+                            <h2 class="scan-type">
+                                {{ port_scan_result.scan_type }}
+                            </h2>
+                        </div>
+
+                    </div>
+
+                    <h3>Discovered Open Ports</h3>
+
+                    {% if port_scan_result.open_ports %}
+
+                        <div class="table-container">
+
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Port</th>
+                                        <th>Protocol</th>
+                                        <th>State</th>
+                                        <th>Service</th>
+                                        <th>Product</th>
+                                        <th>Version</th>
+                                        <th>Extra Information</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+
+                                    {% for port in port_scan_result.open_ports %}
+
+                                        <tr>
+                                            <td>{{ port.port }}</td>
+                                            <td>{{ port.protocol }}</td>
+                                            <td class="open">{{ port.state }}</td>
+                                            <td>{{ port.service or "Unknown" }}</td>
+                                            <td>{{ port.product or "Unknown" }}</td>
+                                            <td>{{ port.version or "Unknown" }}</td>
+                                            <td>{{ port.extra_info or "None" }}</td>
+                                        </tr>
+
+                                    {% endfor %}
+
+                                </tbody>
+                            </table>
+
+                        </div>
+
+                    {% else %}
+
+                        <p class="empty">
+                            The scan completed successfully, but no open
+                            ports were discovered in the scanned port range.
+                        </p>
+
+                    {% endif %}
+
+                {% else %}
+
+                    <h2>Scan Failed</h2>
+
+                    <div class="error" role="alert">
+                        {{ port_scan_result.error or "An unexpected scanning error occurred." }}
+                    </div>
+
+                {% endif %}
+
+            </section>
+
+        {% endif %}
+
+    </main>
+
+    <nav class="navigation" aria-label="Page navigation">
+
+        <a href="{{ url_for('home') }}" class="back-link">
+            Back to Dashboard
+        </a>
+
+        <form method="POST" action="{{ url_for('logout') }}">
+            <button type="submit" class="logout-button">
+                Logout
+            </button>
+        </form>
+
+    </nav>
+
+    <footer class="footer">
+        VulnScope | Authorized Vulnerability Assessment Platform
+    </footer>
+
+</div>
+
+</body>
+</html>

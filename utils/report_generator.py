@@ -1,9 +1,11 @@
+
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
@@ -23,9 +25,8 @@ from reportlab.platypus import (
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPORTS_DIR = BASE_DIR / "reports"
+MAX_FINDINGS = 500
 
-
-# Recommendations for missing security headers.
 RECOMMENDATIONS = {
     "Content-Security-Policy": (
         "Configure a Content Security Policy that restricts the "
@@ -44,7 +45,8 @@ RECOMMENDATIONS = {
         "application needs to be embedded in frames."
     ),
     "Referrer-Policy": (
-        "Set a suitable Referrer-Policy, such as strict-origin-when-cross-origin."
+        "Set a suitable Referrer-Policy, such as "
+        "strict-origin-when-cross-origin."
     ),
     "Permissions-Policy": (
         "Restrict browser features and APIs to only those required "
@@ -54,16 +56,113 @@ RECOMMENDATIONS = {
 
 
 # --------------------------------------------------
-# Helper functions
+# Validation and helper functions
 # --------------------------------------------------
 
-def safe_text(value):
-    """Escape dynamic values before inserting them into PDF paragraphs."""
+def safe_text(value, max_length=10000):
+    """Convert dynamic values into safe ReportLab paragraph text."""
 
     if value is None:
         return "Not available"
 
-    return escape(str(value))
+    return escape(str(value)[:max_length])
+
+
+def validate_count(value, field_name):
+    """Validate a non-negative integer count."""
+
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{field_name} must be a non-negative integer.")
+
+    return value
+
+
+def get_missing_header_count(value):
+    """Support both integer counts and lists of missing headers."""
+
+    if isinstance(value, bool):
+        raise ValueError("Invalid missing_headers value.")
+
+    if isinstance(value, int):
+        return validate_count(value, "missing_headers")
+
+    if isinstance(value, list):
+        return len(value)
+
+    raise ValueError("missing_headers must be an integer or a list.")
+
+
+def validate_scan_result(scan_result):
+    """Validate the scan data before generating a PDF."""
+
+    if not isinstance(scan_result, Mapping):
+        raise ValueError("Scan result must be a dictionary.")
+
+    if scan_result.get("success") is not True:
+        raise ValueError("A successful scan result is required.")
+
+    results = scan_result.get("results", [])
+
+    if not isinstance(results, list):
+        raise ValueError("Scan results must be a list.")
+
+    if len(results) > MAX_FINDINGS:
+        raise ValueError(
+            f"Too many findings. Maximum allowed: {MAX_FINDINGS}."
+        )
+
+    for item in results:
+        if not isinstance(item, Mapping):
+            raise ValueError("Each scan finding must be a dictionary.")
+
+    summary = scan_result.get("severity_summary", {})
+
+    if not isinstance(summary, Mapping):
+        raise ValueError("Severity summary must be a dictionary.")
+
+    total_headers = validate_count(
+        scan_result.get("total_headers_checked", 0),
+        "total_headers_checked"
+    )
+
+    missing_headers = get_missing_header_count(
+        scan_result.get("missing_headers", 0)
+    )
+
+    if missing_headers > total_headers:
+        raise ValueError(
+            "Missing headers cannot exceed the total headers checked."
+        )
+
+    for severity in ("High", "Medium", "Low"):
+        validate_count(summary.get(severity, 0), f"{severity} count")
+
+    return results, summary, total_headers, missing_headers
+
+
+def validate_output_path(output_path):
+    """Ensure the generated PDF stays inside the reports directory."""
+
+    if not isinstance(output_path, (str, Path)):
+        raise ValueError("Invalid report output path.")
+
+    try:
+        reports_directory = REPORTS_DIR.resolve()
+        destination = Path(output_path).resolve()
+
+        destination.relative_to(reports_directory)
+    except (OSError, ValueError):
+        raise ValueError(
+            "Report files must be saved inside the reports directory."
+        )
+
+    if destination == reports_directory:
+        raise ValueError("A PDF filename is required.")
+
+    if destination.suffix.lower() != ".pdf":
+        raise ValueError("Report filename must have a .pdf extension.")
+
+    return destination
 
 
 def create_styles():
@@ -155,7 +254,6 @@ def add_page_number(canvas, document):
     """Add page numbers to the bottom of each PDF page."""
 
     canvas.saveState()
-
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(colors.HexColor("#64748B"))
 
@@ -174,28 +272,27 @@ def add_page_number(canvas, document):
 
 def generate_pdf_report(scan_result, output_path):
     """
-    Generate a PDF report from a successful VulnScope scan.
+    Generate a PDF report from a successful HTTP header scan.
 
-    Args:
-        scan_result: Dictionary returned by scan_security_headers().
-        output_path: Destination path for the PDF file.
-
-    Returns:
-        The generated PDF file path as a string.
+    The output file must be saved inside the project's reports directory.
+    Returns the generated PDF path as a string.
     """
 
-    if not scan_result or not scan_result.get("success"):
-        raise ValueError("A successful scan result is required.")
+    results, summary, total_headers, missing_headers = (
+        validate_scan_result(scan_result)
+    )
 
-    output_path = Path(output_path)
+    destination = validate_output_path(output_path)
 
-    # Ensure the reports directory exists.
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        raise RuntimeError("Unable to create the report directory.")
 
     styles = create_styles()
 
     document = SimpleDocTemplate(
-        str(output_path),
+        str(destination),
         pagesize=A4,
         rightMargin=20 * mm,
         leftMargin=20 * mm,
@@ -207,9 +304,7 @@ def generate_pdf_report(scan_result, output_path):
 
     story = []
 
-    # --------------------------------------------------
     # 1. Report title
-    # --------------------------------------------------
 
     story.append(Paragraph("VULNSCOPE", styles["ReportTitle"]))
 
@@ -223,21 +318,27 @@ def generate_pdf_report(scan_result, output_path):
         styles["SectionHeading"]
     ))
 
-    # --------------------------------------------------
     # 2. Target information
-    # --------------------------------------------------
 
-    scan_date = datetime.now().strftime("%d %B %Y, %H:%M:%S")
+    scan_date = datetime.now().astimezone().strftime(
+        "%d %B %Y, %H:%M:%S %Z"
+    )
 
     target_data = [
         ["Assessment Detail", "Value"],
-        ["Target URL", Paragraph(
-            safe_text(scan_result.get("final_url")),
-            styles["ReportBody"]
-        )],
-        ["Scan Date", scan_date],
-        ["HTTP Status Code", str(scan_result.get("status_code", "N/A"))],
-        ["Headers Checked", str(scan_result.get("total_headers_checked", 0))]
+        [
+            "Target URL",
+            Paragraph(
+                safe_text(scan_result.get("final_url")),
+                styles["ReportBody"]
+            )
+        ],
+        ["Scan Date", safe_text(scan_date)],
+        [
+            "HTTP Status Code",
+            safe_text(scan_result.get("status_code", "N/A"))
+        ],
+        ["Headers Checked", str(total_headers)]
     ]
 
     story.append(create_table(
@@ -247,25 +348,21 @@ def generate_pdf_report(scan_result, output_path):
 
     story.append(Spacer(1, 12))
 
-    # --------------------------------------------------
     # 3. Executive summary
-    # --------------------------------------------------
 
     story.append(Paragraph(
         "Executive Summary",
         styles["SectionHeading"]
     ))
 
-    missing_headers = scan_result.get("missing_headers", 0)
-    total_headers = scan_result.get("total_headers_checked", 0)
-    risk_level = scan_result.get("risk_level", "Unknown")
+    risk_level = safe_text(scan_result.get("risk_level", "Unknown"))
 
     story.append(Paragraph(
         (
             f"The assessment checked <b>{total_headers}</b> HTTP security "
             f"headers. It identified <b>{missing_headers}</b> missing "
             f"headers. The preliminary header-based risk level is "
-            f"<b>{safe_text(risk_level)}</b>."
+            f"<b>{risk_level}</b>."
         ),
         styles["ReportBody"]
     ))
@@ -277,16 +374,12 @@ def generate_pdf_report(scan_result, output_path):
         styles["ReportBody"]
     ))
 
-    # --------------------------------------------------
     # 4. Severity summary
-    # --------------------------------------------------
 
     story.append(Paragraph(
         "Risk Assessment Summary",
         styles["SectionHeading"]
     ))
-
-    summary = scan_result.get("severity_summary", {})
 
     severity_data = [
         ["Severity", "Missing Headers"],
@@ -300,9 +393,7 @@ def generate_pdf_report(scan_result, output_path):
         column_widths=[80 * mm, 80 * mm]
     ))
 
-    # --------------------------------------------------
     # 5. Detailed findings
-    # --------------------------------------------------
 
     story.append(Paragraph(
         "Detailed Security Header Findings",
@@ -313,10 +404,12 @@ def generate_pdf_report(scan_result, output_path):
         ["Security Header", "Status", "Severity"]
     ]
 
-    for item in scan_result.get("results", []):
-
+    for item in results:
         findings_data.append([
-            Paragraph(safe_text(item.get("header")), styles["SmallText"]),
+            Paragraph(
+                safe_text(item.get("header")),
+                styles["SmallText"]
+            ),
             safe_text(item.get("status")),
             safe_text(item.get("severity"))
         ])
@@ -326,9 +419,7 @@ def generate_pdf_report(scan_result, output_path):
         column_widths=[75 * mm, 40 * mm, 45 * mm]
     ))
 
-    # --------------------------------------------------
     # 6. Remediation recommendations
-    # --------------------------------------------------
 
     story.append(Paragraph(
         "Remediation Recommendations",
@@ -336,15 +427,15 @@ def generate_pdf_report(scan_result, output_path):
     ))
 
     missing_findings = [
-        item for item in scan_result.get("results", [])
-        if item.get("status") == "Missing"
+        item for item in results
+        if str(item.get("status", "")).strip().lower() == "missing"
     ]
 
     if missing_findings:
-
         for item in missing_findings:
-
-            header_name = item.get("header", "Unknown header")
+            header_name = str(
+                item.get("header", "Unknown header")
+            )
 
             recommendation = RECOMMENDATIONS.get(
                 header_name,
@@ -363,17 +454,13 @@ def generate_pdf_report(scan_result, output_path):
                 ),
                 Spacer(1, 6)
             ]))
-
     else:
-
         story.append(Paragraph(
             "No missing security headers were identified in this assessment.",
             styles["ReportBody"]
         ))
 
-    # --------------------------------------------------
     # 7. Limitations and disclaimer
-    # --------------------------------------------------
 
     story.append(Paragraph(
         "Assessment Limitations",
@@ -404,14 +491,22 @@ def generate_pdf_report(scan_result, output_path):
         styles["SmallText"]
     ))
 
-    # --------------------------------------------------
-    # Build PDF
-    # --------------------------------------------------
+    # Build the PDF
 
-    document.build(
-        story,
-        onFirstPage=add_page_number,
-        onLaterPages=add_page_number
-    )
+    try:
+        document.build(
+            story,
+            onFirstPage=add_page_number,
+            onLaterPages=add_page_number
+        )
+    except Exception:
+        # Remove an incomplete PDF if generation fails.
+        try:
+            if destination.exists():
+                destination.unlink()
+        except OSError:
+            pass
 
-    return str(output_path)
+        raise RuntimeError("Unable to generate the PDF report.")
+
+    return str(destination)

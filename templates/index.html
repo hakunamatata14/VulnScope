@@ -1,449 +1,591 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>VulnScope | Vulnerability Assessment Platform</title>
-
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
 
-    <div class="dashboard">
+<div class="dashboard">
 
-        <!-- Sidebar -->
-        <aside class="sidebar">
+    <!-- Sidebar -->
+    <aside class="sidebar">
 
-            <div class="brand">
-                <h1>VulnScope</h1>
-                <p>Security Assessment Platform</p>
+        <div class="brand">
+            <h1>VulnScope</h1>
+            <p>Security Assessment Platform</p>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#dashboard">Dashboard</a>
+            <a href="#scanner">Security Scanner</a>
+            <a href="#severity">Severity Overview</a>
+            <a href="#history">Recent Scan History</a>
+            <a href="{{ url_for('scan_history') }}">Complete Scan History</a>
+            <a href="{{ url_for('port_scan') }}">Port Scanner</a>
+            <a href="{{ url_for('ssl_scan') }}">SSL/TLS Analyzer</a>
+            <a href="{{ url_for('zap_scan') }}">OWASP ZAP Scanner</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <p>VulnScope v1.0</p>
+            <p>Cybersecurity Assessment Tool</p>
+        </div>
+
+    </aside>
+
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Topbar -->
+        <header class="topbar">
+
+            <div>
+                <p class="topbar-label">Security Operations</p>
+                <h2>Vulnerability Assessment Dashboard</h2>
             </div>
 
-            <nav class="sidebar-nav">
-                <a href="#dashboard">Dashboard</a>
-                <a href="#scanner">Security Scanner</a>
-                <a href="#history">Scan History</a>
-            </nav>
-
-            <div class="sidebar-footer">
-                <p>VulnScope v1.0</p>
-                <p>Cybersecurity Assessment Tool</p>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                System Online
             </div>
 
-        </aside>
+        </header>
 
 
-        <!-- Main Content -->
-        <main class="main-content">
+        <!-- Welcome -->
+        <section id="dashboard" class="welcome-section">
 
-            <!-- Topbar -->
-            <header class="topbar">
+            <h1>Welcome to VulnScope</h1>
 
-                <div>
-                    <p class="topbar-label">Security Operations</p>
-                    <h2>Vulnerability Assessment Dashboard</h2>
+            <p>
+                Identify security weaknesses, assess risks,
+                monitor vulnerabilities, and generate professional
+                security assessment reports.
+            </p>
+
+        </section>
+
+
+        <!-- Main Statistics -->
+        <section class="stats-grid">
+
+            <div class="stat-card">
+                <p>Total Scans</p>
+                <h2>{{ dashboard_stats.total_scans|default(0) }}</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Total Findings</p>
+                <h2>{{ dashboard_stats.vulnerabilities|default(0) }}</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>High Severity</p>
+                <h2>{{ dashboard_stats.high_severity|default(0) }}</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Reports Generated</p>
+                <h2>{{ dashboard_stats.reports_generated|default(0) }}</h2>
+            </div>
+
+        </section>
+
+
+        <!-- Severity Overview -->
+        <section id="severity" class="panel">
+
+            <div class="section-heading">
+                <h2>Vulnerability Severity Overview</h2>
+                <p>Severity distribution across recorded assessments.</p>
+            </div>
+
+            <div class="severity-grid">
+
+                <div class="severity-card critical-risk">
+                    <p>Critical</p>
+                    <h2>{{ dashboard_stats.critical_severity|default(0) }}</h2>
                 </div>
 
-                <div class="status-indicator">
-                    <span class="status-dot"></span>
-                    System Online
+                <div class="severity-card high-risk">
+                    <p>High</p>
+                    <h2>{{ dashboard_stats.high_severity|default(0) }}</h2>
                 </div>
 
-            </header>
+                <div class="severity-card medium-risk">
+                    <p>Medium</p>
+                    <h2>{{ dashboard_stats.medium_severity|default(0) }}</h2>
+                </div>
+
+                <div class="severity-card low-risk">
+                    <p>Low</p>
+                    <h2>{{ dashboard_stats.low_severity|default(0) }}</h2>
+                </div>
+
+                <div class="severity-card">
+                    <p>Informational</p>
+                    <h2>{{ dashboard_stats.informational|default(0) }}</h2>
+                </div>
+
+            </div>
+
+            <p class="disclaimer">
+                Counts represent recorded findings across scans.
+                The same issue may be counted again in subsequent scans.
+            </p>
+
+        </section>
 
 
-            <!-- Dashboard -->
-            <section id="dashboard" class="welcome-section">
+        <!-- HTTP Security Header Scanner -->
+        <section id="scanner" class="panel">
 
-                <h1>Welcome to VulnScope</h1>
+            <div class="section-heading">
+                <h2>HTTP Security Header Scanner</h2>
+                <p>
+                    Analyze HTTP security headers for an authorized
+                    public target.
+                </p>
+            </div>
+
+            <form method="POST" action="/" class="scanner-form">
+
+                <div class="form-group">
+                    <label for="target_url">Target URL</label>
+
+                    <input
+                        type="text"
+                        id="target_url"
+                        name="target_url"
+                        placeholder="https://example.com"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="scan-button">
+                    Start Security Scan
+                </button>
+
+            </form>
+
+            <p class="disclaimer">
+                Only scan systems you own or have explicit
+                authorization to assess.
+            </p>
+
+        </section>
+
+
+        <!-- HTTP Scan Results -->
+        {% if scan_result %}
+
+        <section class="panel">
+
+            <div class="section-heading">
+                <h2>Scan Results</h2>
+            </div>
+
+            {% if scan_result.success %}
+
+            <div class="result-summary">
 
                 <p>
-                    Identify security weaknesses, assess risks,
-                    and generate professional vulnerability reports.
+                    <strong>Target:</strong>
+                    {{ scan_result.final_url }}
                 </p>
 
-            </section>
-
-
-            <!-- Statistics -->
-            <section class="stats-grid">
-
-                <div class="stat-card">
-                    <p>Total Scans</p>
-                    <h2>{{ dashboard_stats.total_scans }}</h2>
-                </div>
-
-                <div class="stat-card">
-                    <p>Vulnerabilities Found</p>
-                    <h2>{{ dashboard_stats.vulnerabilities }}</h2>
-                </div>
-
-                <div class="stat-card">
-                    <p>High Severity</p>
-                    <h2>{{ dashboard_stats.high_severity }}</h2>
-                </div>
-
-                <div class="stat-card">
-                    <p>Reports Generated</p>
-                    <h2>{{ dashboard_stats.reports_generated }}</h2>
-                </div>
-
-            </section>
-
-
-            <!-- Scanner -->
-            <section id="scanner" class="panel">
-
-                <div class="section-heading">
-                    <h2>HTTP Security Header Scanner</h2>
-
-                    <p>
-                        Analyze HTTP security headers for an authorized
-                        public target.
-                    </p>
-                </div>
-
-                <form method="POST" action="/" class="scanner-form">
-
-                    <div class="form-group">
-
-                        <label for="target_url">Target URL</label>
-
-                        <input
-                            type="text"
-                            id="target_url"
-                            name="target_url"
-                            placeholder="https://example.com"
-                            required
-                        >
-
-                    </div>
-
-                    <button type="submit" class="scan-button">
-                        Start Security Scan
-                    </button>
-
-                </form>
-
-                <p class="disclaimer">
-                    Only scan systems you own or have explicit
-                    authorization to assess.
+                <p>
+                    <strong>HTTP Status:</strong>
+                    {{ scan_result.status_code }}
                 </p>
 
-            </section>
+                <p>
+                    <strong>Headers Checked:</strong>
+                    {{ scan_result.total_headers_checked }}
+                </p>
+
+                <p>
+                    <strong>Missing Headers:</strong>
+                    {{ scan_result.missing_headers }}
+                </p>
+
+                <p>
+                    <strong>Risk Level:</strong>
+
+                    <span class="result-badge risk-{{ scan_result.risk_level|lower }}">
+                        {{ scan_result.risk_level }}
+                    </span>
+                </p>
+
+            </div>
 
 
-            <!-- Scan Results -->
-            {% if scan_result %}
+            <!-- Severity Summary -->
+            <div class="severity-panel">
 
-            <section class="panel">
+                <h3>Severity Summary</h3>
 
-                <div class="section-heading">
-                    <h2>Scan Results</h2>
+                <div class="severity-grid">
+
+                    <div class="severity-card high-risk">
+                        <p>High</p>
+                        <h2>{{ scan_result.severity_summary.High }}</h2>
+                    </div>
+
+                    <div class="severity-card medium-risk">
+                        <p>Medium</p>
+                        <h2>{{ scan_result.severity_summary.Medium }}</h2>
+                    </div>
+
+                    <div class="severity-card low-risk">
+                        <p>Low</p>
+                        <h2>{{ scan_result.severity_summary.Low }}</h2>
+                    </div>
+
                 </div>
 
-                {% if scan_result.success %}
-
-                    <div class="result-summary">
-
-                        <p>
-                            <strong>Target:</strong>
-                            {{ scan_result.final_url }}
-                        </p>
-
-                        <p>
-                            <strong>HTTP Status:</strong>
-                            {{ scan_result.status_code }}
-                        </p>
-
-                        <p>
-                            <strong>Headers Checked:</strong>
-                            {{ scan_result.total_headers_checked }}
-                        </p>
-
-                        <p>
-                            <strong>Missing Headers:</strong>
-                            {{ scan_result.missing_headers }}
-                        </p>
-
-                        <p>
-                            <strong>Risk Level:</strong>
-
-                            <span class="result-badge risk-{{ scan_result.risk_level|lower }}">
-                                {{ scan_result.risk_level }}
-                            </span>
-
-                        </p>
-
-                    </div>
+            </div>
 
 
-                    <!-- Severity Summary -->
-                    <div class="severity-panel">
+            <!-- Detailed Findings -->
+            <h3>Detailed Findings</h3>
 
-                        <h3>Severity Summary</h3>
+            <div class="table-container">
 
-                        <div class="severity-grid">
+                <table>
 
-                            <div class="severity-card high-risk">
-                                <p>High</p>
-                                <h2>{{ scan_result.severity_summary.High }}</h2>
-                            </div>
+                    <thead>
+                        <tr>
+                            <th>Security Header</th>
+                            <th>Status</th>
+                            <th>Severity</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
 
-                            <div class="severity-card medium-risk">
-                                <p>Medium</p>
-                                <h2>{{ scan_result.severity_summary.Medium }}</h2>
-                            </div>
+                    <tbody>
 
-                            <div class="severity-card low-risk">
-                                <p>Low</p>
-                                <h2>{{ scan_result.severity_summary.Low }}</h2>
-                            </div>
+                        {% for item in scan_result.results %}
 
-                        </div>
+                        <tr>
 
-                    </div>
+                            <td>{{ item.header }}</td>
 
+                            <td>
+                                <span class="result-badge
+                                    {% if item.status == 'Present' %}
+                                        present
+                                    {% else %}
+                                        missing
+                                    {% endif %}">
+                                    {{ item.status }}
+                                </span>
+                            </td>
 
-                    <!-- Detailed Findings -->
-                    <h3>Detailed Findings</h3>
+                            <td>{{ item.severity }}</td>
 
-                    <div class="table-container">
+                            <td>{{ item.description }}</td>
 
-                        <table>
+                        </tr>
 
-                            <thead>
-                                <tr>
-                                    <th>Security Header</th>
-                                    <th>Status</th>
-                                    <th>Severity</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
+                        {% endfor %}
 
-                            <tbody>
+                    </tbody>
 
-                                {% for item in scan_result.results %}
+                </table>
 
-                                <tr>
-
-                                    <td>{{ item.header }}</td>
-
-                                    <td>
-                                        <span class="result-badge
-                                            {% if item.status == 'Present' %}
-                                                present
-                                            {% else %}
-                                                missing
-                                            {% endif %}">
-                                            {{ item.status }}
-                                        </span>
-                                    </td>
-
-                                    <td>{{ item.severity }}</td>
-
-                                    <td>{{ item.description }}</td>
-
-                                </tr>
-
-                                {% endfor %}
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
+            </div>
 
 
-                    <!-- PDF Report Download -->
-                    {% if report_id %}
+            <!-- PDF Report -->
+            {% if report_id %}
 
-                    <div class="report-download">
+            <div class="report-download">
 
-                        <h3>Assessment Report Ready</h3>
+                <h3>Assessment Report Ready</h3>
 
-                        <p>
-                            Your PDF vulnerability assessment report
-                            has been generated successfully.
-                        </p>
+                <p>
+                    Your PDF vulnerability assessment report
+                    has been generated successfully.
+                </p>
 
-                        <a
-                            href="{{ url_for('download_report', scan_id=report_id) }}"
-                            class="scan-button"
-                        >
-                            Download PDF Report
-                        </a>
+                <a
+                    href="{{ url_for('download_report', scan_id=report_id) }}"
+                    class="scan-button"
+                >
+                    Download PDF Report
+                </a>
 
-                    </div>
+            </div>
 
-                    {% elif report_error %}
+            {% elif report_error %}
 
-                    <p class="disclaimer">
-                        {{ report_error }}
-                    </p>
-
-                    {% endif %}
-
-
-                    <p class="disclaimer">
-                        Risk level is a preliminary indicator based
-                        on missing HTTP security headers. It is not
-                        a CVSS score or a complete penetration test.
-                    </p>
-
-
-                {% else %}
-
-                    <div class="error-message">
-                        <h3>Scan Failed</h3>
-                        <p>{{ scan_result.error }}</p>
-                    </div>
-
-                {% endif %}
-
-            </section>
+            <p class="disclaimer">
+                {{ report_error }}
+            </p>
 
             {% endif %}
 
 
-            <!-- Scan History -->
-            <section id="history" class="panel">
-
-                <div class="section-heading">
-
-                    <h2>Scan History</h2>
-
-                    <p>Latest 10 saved security assessments</p>
-
-                </div>
-
-                <div class="table-container">
-
-                    <table>
-
-                        <thead>
-
-                            <tr>
-                                <th>Scan ID</th>
-                                <th>Target URL</th>
-                                <th>Scan Date</th>
-                                <th>HTTP Status</th>
-                                <th>Missing Headers</th>
-                                <th>Risk Level</th>
-                            </tr>
-
-                        </thead>
-
-                        <tbody>
-
-                            {% for scan in scan_history %}
-
-                            <tr>
-
-                                <td>#{{ scan.id }}</td>
-
-                                <td>{{ scan.target_url }}</td>
-
-                                <td>{{ scan.scanned_at }}</td>
-
-                                <td>{{ scan.status_code }}</td>
-
-                                <td>{{ scan.missing_headers }}</td>
-
-                                <td>
-
-                                    <span class="result-badge
-                                        {% if scan.risk_level == 'High' %}
-                                            missing
-                                        {% elif scan.risk_level == 'Medium' %}
-                                            missing
-                                        {% else %}
-                                            present
-                                        {% endif %}">
-
-                                        {{ scan.risk_level }}
-
-                                    </span>
-
-                                </td>
-
-                            </tr>
-
-                            {% else %}
-
-                            <tr>
-                                <td colspan="6">
-                                    No scan history available yet.
-                                </td>
-                            </tr>
-
-                            {% endfor %}
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-            </section>
+            <p class="disclaimer">
+                Risk level is a preliminary indicator based on
+                missing HTTP security headers. It is not a CVSS
+                score or a complete penetration test.
+            </p>
 
 
-            <!-- Other Tools -->
-            <section class="panel">
+            {% else %}
 
-                <div class="section-heading">
+            <div class="error-message">
+                <h3>Scan Failed</h3>
+                <p>{{ scan_result.error }}</p>
+            </div>
 
-                    <h2>Security Assessment Modules</h2>
+            {% endif %}
 
-                    <p>Additional scanning capabilities planned for VulnScope.</p>
+        </section>
 
-                </div>
-
-                <div class="tools-grid">
-
-                    <div class="tool-card">
-                        <h3>Port Scanner</h3>
-                        <p>Nmap-based port and service discovery.</p>
-                        <span>Coming Soon</span>
-                    </div>
-
-                    <div class="tool-card">
-                        <h3>SSL/TLS Analyzer</h3>
-                        <p>Evaluate SSL/TLS configuration and certificates.</p>
-                        <span>Coming Soon</span>
-                    </div>
-
-                    <div class="tool-card">
-                        <h3>OWASP ZAP</h3>
-                        <p>Web application security assessment integration.</p>
-                        <span>Coming Soon</span>
-                    </div>
-
-                </div>
-
-            </section>
+        {% endif %}
 
 
-            <!-- Footer -->
-            <footer class="footer">
+        <!-- UNIFIED SCAN HISTORY -->
+        <section id="history" class="panel">
+
+            <div class="section-heading">
+
+                <h2>Recent Vulnerability Scan History</h2>
 
                 <p>
-                    VulnScope | Vulnerability Assessment and Penetration Testing Platform
+                    Latest 10 assessments from all VulnScope
+                    security scanning modules.
                 </p>
 
+                <a
+                    href="{{ url_for('scan_history') }}"
+                    class="scan-button"
+                >
+                    View Complete Scan History
+                </a>
+
+            </div>
+
+
+            <!-- Scanner Summary -->
+            <div class="severity-grid">
+
+                <div class="severity-card">
+                    <p>Recent Records</p>
+                    <h2>{{ recent_scans|length }}</h2>
+                </div>
+
+                <div class="severity-card">
+                    <p>HTTP Headers</p>
+                    <h2>
+                        {{ recent_scans|selectattr('scan_type', 'equalto', 'HTTP Headers')|list|length }}
+                    </h2>
+                </div>
+
+                <div class="severity-card">
+                    <p>Port Scanner</p>
+                    <h2>
+                        {{ recent_scans|selectattr('scan_type', 'equalto', 'Port Scanner')|list|length }}
+                    </h2>
+                </div>
+
+                <div class="severity-card">
+                    <p>SSL/TLS</p>
+                    <h2>
+                        {{ recent_scans|selectattr('scan_type', 'equalto', 'SSL/TLS')|list|length }}
+                    </h2>
+                </div>
+
+                <div class="severity-card">
+                    <p>OWASP ZAP</p>
+                    <h2>
+                        {{ recent_scans|selectattr('scan_type', 'equalto', 'ZAP')|list|length }}
+                    </h2>
+                </div>
+
+            </div>
+
+
+            <!-- Unified History Table -->
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Scanner</th>
+                            <th>Target</th>
+                            <th>Scan Date</th>
+                            <th>Status</th>
+                            <th>Findings</th>
+                            <th>Critical</th>
+                            <th>High</th>
+                            <th>Medium</th>
+                            <th>Low</th>
+                            <th>Overall Risk</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for scan in recent_scans %}
+
+                        <tr>
+
+                            <td>#{{ scan.id }}</td>
+
+                            <td>
+                                <strong>{{ scan.scan_type }}</strong>
+                            </td>
+
+                            <td>
+                                {{ scan.target }}
+                            </td>
+
+                            <td>
+                                {{ scan.scanned_at }}
+                            </td>
+
+                            <td>
+                                <span class="result-badge present">
+                                    {{ scan.status }}
+                                </span>
+                            </td>
+
+                            <td>
+                                {{ scan.total_findings }}
+                            </td>
+
+                            <td>
+                                {{ scan.critical_count }}
+                            </td>
+
+                            <td>
+                                {{ scan.high_count }}
+                            </td>
+
+                            <td>
+                                {{ scan.medium_count }}
+                            </td>
+
+                            <td>
+                                {{ scan.low_count }}
+                            </td>
+
+                            <td>
+
+                                {% set risk = scan.overall_risk or 'Informational' %}
+
+                                <span class="result-badge
+                                    {% if risk|lower == 'critical' %}
+                                        missing
+                                    {% elif risk|lower == 'high' %}
+                                        missing
+                                    {% elif risk|lower == 'medium' %}
+                                        missing
+                                    {% else %}
+                                        present
+                                    {% endif %}">
+
+                                    {{ risk }}
+
+                                </span>
+
+                            </td>
+
+                        </tr>
+
+                        {% else %}
+
+                        <tr>
+                            <td colspan="11">
+                                No vulnerability scan history available yet.
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <p class="disclaimer">
+                This table displays the latest 10 records from the
+                unified scan history database. Open Complete Scan
+                History to view up to 50 saved records.
+            </p>
+
+        </section>
+
+
+        <!-- Security Assessment Modules -->
+        <section class="panel">
+
+            <div class="section-heading">
+                <h2>Security Assessment Modules</h2>
                 <p>
-                    Built for authorized defensive security assessments.
+                    Available vulnerability assessment and
+                    security testing capabilities.
                 </p>
+            </div>
 
-            </footer>
+            <div class="tools-grid">
 
-        </main>
+                <div class="tool-card">
+                    <h3>Port Scanner</h3>
+                    <p>Nmap-based port and service discovery.</p>
+                    <a href="{{ url_for('port_scan') }}">Open Scanner</a>
+                </div>
 
-    </div>
+                <div class="tool-card">
+                    <h3>SSL/TLS Analyzer</h3>
+                    <p>Evaluate SSL/TLS configuration and certificates.</p>
+                    <a href="{{ url_for('ssl_scan') }}">Open Scanner</a>
+                </div>
+
+                <div class="tool-card">
+                    <h3>OWASP ZAP Scanner</h3>
+                    <p>
+                        Web application security assessment using
+                        OWASP ZAP spidering and passive analysis.
+                    </p>
+                    <a href="{{ url_for('zap_scan') }}">Open Scanner</a>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Footer -->
+        <footer class="footer">
+
+            <p>
+                VulnScope | Vulnerability Assessment and
+                Penetration Testing Platform
+            </p>
+
+            <p>
+                Built for authorized defensive security assessments.
+            </p>
+
+        </footer>
+
+    </main>
+
+</div>
 
 </body>
-
 </html>
