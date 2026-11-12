@@ -1,80 +1,98 @@
-
 # VulnScope
 
-### Hybrid Vulnerability Assessment and Penetration Testing Platform
+### Security Assessment and Vulnerability Scanning Platform
 
-VulnScope is a Python-based web application designed to perform security assessments, identify missing HTTP security headers, maintain scan history, and generate PDF vulnerability assessment reports.
+VulnScope is a Python-based web application that brings together multiple security assessment tools in one dashboard. It helps assess web security configurations, identify exposed network services, inspect SSL/TLS certificates, and review potential web vulnerabilities.
 
-The project demonstrates practical cybersecurity concepts, Python development, web application security, vulnerability assessment, and automated reporting.
-
----
-
-## Project Overview
-
-VulnScope provides a web-based dashboard for conducting basic security assessments of authorized web targets.
-
-The platform currently analyzes HTTP security headers, classifies missing headers by severity, stores scan history in SQLite, and generates downloadable PDF reports.
+Built with Python and Flask, VulnScope includes scan history, risk scoring, SQLite storage, and PDF report generation.
 
 ## Features
 
-### Implemented Features
+### Implemented Modules
 
-- Web-based security assessment dashboard
-- HTTP security header analysis
-- Detection of missing security headers
-- High, Medium, and Low severity classification
-- Preliminary risk-level calculation
-- SQLite scan history management
-- Automated PDF report generation
-- PDF report downloads
-- Flask session management
-- Environment-based secret key configuration
-- Basic target URL validation
-- Git version control and GitHub integration
+- **Security Header Scanner**
+  - Checks important HTTP security headers.
+  - Identifies missing security headers.
+  - Classifies findings by severity.
+  - Calculates a preliminary security risk level.
 
-### Planned Features
+- **Network Port Scanner**
+  - Integrates with Nmap.
+  - Performs TCP connect scans.
+  - Identifies open ports and services.
+  - Retrieves basic service and version information.
 
-- Nmap port and service scanning
-- SSL/TLS configuration analysis
-- OWASP ZAP integration
-- CVSS-informed vulnerability scoring
-- Advanced vulnerability classification
-- Detailed assessment reporting
-- Automated security testing
+- **SSL/TLS Scanner**
+  - Inspects HTTPS configurations.
+  - Identifies negotiated TLS versions and cipher suites.
+  - Retrieves certificate subject and issuer information.
+  - Checks certificate validity and expiration.
 
----
+- **OWASP ZAP Integration**
+  - Connects to the OWASP ZAP API.
+  - Performs website spidering.
+  - Runs passive security analysis.
+  - Retrieves and displays vulnerability findings.
+
+- **Risk Scoring**
+  - Calculates finding scores.
+  - Classifies findings by severity and confidence.
+  - Generates an overall risk summary.
+
+- **Dashboard and Scan History**
+  - Centralized web dashboard.
+  - Separate scanning interfaces.
+  - SQLite-based scan history.
+  - Historical assessment results.
+
+- **PDF Reporting**
+  - Generates downloadable assessment reports.
+  - Presents scan findings and assessment information.
+
+- **Application Security**
+  - Administrator authentication.
+  - Environment-based configuration.
+  - Session management.
+  - Input validation and protected application routes.
 
 ## Technology Stack
 
 | Technology | Purpose |
 |---|---|
-| Python | Core programming language |
+| Python | Backend development |
 | Flask | Web application framework |
-| Requests | HTTP requests |
-| SQLite | Scan history storage |
-| ReportLab | PDF report generation |
-| HTML5 | Dashboard structure |
-| CSS3 | Dashboard styling |
+| SQLite | Database |
+| Requests | HTTP communication |
+| Nmap | Network scanning |
+| OWASP ZAP | Web application security analysis |
+| ReportLab | PDF generation |
+| HTML5 | Frontend structure |
+| CSS3 | Styling |
 | JavaScript | Frontend functionality |
-| Git | Version control |
-| GitHub | Source code hosting |
+| Git and GitHub | Version control |
 
----
-
-## Project Architecture
+## Project Structure
 
 ```text
 VulnScope/
 │
 ├── app.py
 ├── requirements.txt
+├── .env.example
 ├── .gitignore
 │
 ├── scanners/
-│   └── header_scanner.py
+│   ├── header_scanner.py
+│   ├── port_scanner.py
+│   ├── ssl_scanner.py
+│   └── zap_scanner.py
 │
 ├── templates/
-│   └── index.html
+│   ├── index.html
+│   ├── port_scan.html
+│   ├── scan_history.html
+│   ├── ssl_scan.html
+│   └── zap_scan.html
 │
 ├── static/
 │   ├── css/
@@ -83,119 +101,145 @@ VulnScope/
 │
 ├── utils/
 │   ├── database.py
-│   └── report_generator.py
+│   ├── report_generator.py
+│   └── risk_scoring.py
 │
 ├── database/
 ├── reports/
 └── tests/
 ```
 
----
-
 ## Installation and Setup
 
 ### 1. Clone the repository
 
-```bash
+```powershell
 git clone https://github.com/hakunamatata14/VulnScope.git
 ```
 
-### 2. Navigate to the project directory
+### 2. Navigate to the project
 
-```bash
+```powershell
 cd VulnScope
 ```
 
 ### 3. Create a virtual environment
 
-```bash
+```powershell
 python -m venv .venv
 ```
 
 ### 4. Activate the virtual environment
 
-Windows PowerShell:
+For Windows PowerShell:
 
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 5. Install dependencies
+### 5. Install Python dependencies
 
-```bash
-pip install -r requirements.txt
+```powershell
+python -m pip install -r requirements.txt
 ```
 
-### 6. Configure environment variables
+### 6. Install external scanning tools
 
-Create a `.env` file in the project root directory.
+Install and configure:
 
-Add a randomly generated secret key:
+- Nmap
+- OWASP ZAP
 
-```text
-SECRET_KEY=your_random_secret_key
+Make sure Nmap is available in your system PATH.
+
+Start OWASP ZAP and enable its API on the local loopback interface.
+
+### 7. Configure environment variables
+
+Create a `.env` file in the project root.
+
+Example configuration:
+
+```env
+SECRET_KEY=generate_a_long_random_secret_key
+VULNSCOPE_USERNAME=admin
+VULNSCOPE_PASSWORD=replace_with_a_unique_password_of_at_least_16_characters
+ZAP_BASE_URL=http://127.0.0.1:8080
+ZAP_API_KEY=your_zap_api_key
 ```
 
-Do not upload your `.env` file to GitHub.
+Generate a secret key with:
 
-### 7. Start the application
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
-```bash
+Use your own strong administrator password and the API key configured in OWASP ZAP.
+
+**Never upload `.env` to GitHub.**
+
+### 8. Run the application
+
+```powershell
 python app.py
 ```
 
-### 8. Open the dashboard
+### 9. Open VulnScope
 
 Visit:
 
+```text
 http://127.0.0.1:5000/
+```
 
----
+Sign in using the administrator credentials configured in `.env`.
 
 ## How to Use
 
-1. Start the Flask application.
-2. Open the VulnScope dashboard.
-3. Enter an authorized public HTTP or HTTPS target.
-4. Start the security header assessment.
-5. Review detected missing headers and severity classifications.
-6. Review the scan history.
-7. Generate and download the PDF assessment report.
+1. Start the VulnScope application.
+2. Sign in to the administrator dashboard.
+3. Select the required security assessment module.
+4. Enter an authorized target.
+5. Start the scan.
+6. Review the scan results and severity classifications.
+7. Check previous scans in scan history.
+8. Generate and download available PDF reports.
 
----
+## Security and Scanning Scope
 
-## Security Assessment Scope
+VulnScope combines several types of assessment:
 
-The current security header scanner checks the following HTTP response headers:
-
-| Security Header | Purpose |
+| Module | Assessment |
 |---|---|
-| Content-Security-Policy | Helps mitigate content injection and XSS |
-| Strict-Transport-Security | Enforces HTTPS connections |
-| X-Content-Type-Options | Helps prevent MIME sniffing |
-| X-Frame-Options | Helps mitigate clickjacking |
-| Referrer-Policy | Controls referrer information |
-| Permissions-Policy | Controls browser feature access |
+| Header Scanner | HTTP security header configuration |
+| Port Scanner | Open TCP ports and service detection |
+| SSL/TLS Scanner | TLS configuration and certificate information |
+| OWASP ZAP | Spidering and passive web vulnerability analysis |
+| Risk Scoring | Finding severity, confidence and risk prioritization |
 
-The preliminary risk level is based on missing security headers. It is not a CVSS score or a complete vulnerability assessment.
+The ZAP integration performs spidering and passive analysis; it does not perform active attack scans.
 
----
+Risk scores are assessment aids and should not be treated as a substitute for a full professional security assessment.
 
 ## Legal Disclaimer
 
-VulnScope is developed for educational purposes, cybersecurity learning, and authorized security assessments.
+VulnScope is intended for educational purposes, cybersecurity learning, and authorized security assessments.
 
-Only assess systems that you own or have explicit permission to test.
+Only scan systems that you own or have explicit permission to assess.
 
-The developer is not responsible for unauthorized use or damage resulting from misuse of this software.
+Do not use this software to access, disrupt, or test systems without authorization. The developer is not responsible for misuse or damage resulting from unauthorized activity.
 
----
+## Future Improvements
 
-## Future Development
+Potential future enhancements include:
 
-VulnScope is an ongoing cybersecurity portfolio project. Planned enhancements include network scanning, SSL/TLS analysis, OWASP ZAP integration, and advanced vulnerability scoring.
-
----
+- More advanced vulnerability classification.
+- Improved PDF reporting and analytics.
+- Additional security assessment modules.
+- Automated regression and integration testing.
+- Enhanced dashboard visualizations.
+- Production deployment hardening.
 
 ## Author
 
@@ -205,4 +249,4 @@ VulnScope is an ongoing cybersecurity portfolio project. Planned enhancements in
 
 ---
 
-*Built as a hands-on cybersecurity and Python development portfolio project.*
+*Developed as a hands-on cybersecurity, Python development, and vulnerability assessment portfolio project.*
